@@ -3,6 +3,10 @@ import express from "express";
 import {createServer} from "http";
 
 import { sendAudio, sendVideo } from './Sender';
+// import {audioPort, videoPort, createListener} from "./Net";
+
+import {TcpServer, audioPort, videoPort} from "./TcpServer"
+// import "./TcpServer";
 
 const app = express();
 const server = createServer(app);
@@ -17,6 +21,9 @@ const io = require('socket.io')(server, {
 const frontendPath = "/frontend/build";
 const PORT = 8000;
 
+const videoServer = new TcpServer(videoPort);
+const audioServer = new TcpServer(audioPort);
+
 app.use(express.static(path.join(__dirname, frontendPath)))
 app.get('*', (req,res) => {
   res.sendFile(path.join(__dirname, frontendPath, "index.html"));
@@ -29,8 +36,18 @@ server.listen(PORT, () => {
 io.on('connection', (socket) => {
   console.log('Client connected ', socket.id);
 
-  sendVideo(socket, '/Users/user/video.fifo', "video-package");
-  sendAudio(socket, '/Users/user/audio.fifo', "audio-package");
+  // sendVideo(socket, '/Users/user/video.fifo', "video-package");
+  // sendAudio(socket, '/Users/user/audio.fifo', "audio-package");
+  // createListener(videoPort, () => {});
+  // createListener(audioPort, () => {});
+  videoServer.setDataHandler((data) => {
+    sendVideo(socket, "video-package", data);
+  })
+
+  audioServer.setDataHandler((data) => {
+    sendAudio(socket, "audio-package", data);
+  })
+
 
   socket.on('disconnect', () => { console.log("Client disconnected ", socket.id)});
 });

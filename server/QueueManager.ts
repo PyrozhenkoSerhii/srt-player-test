@@ -1,16 +1,12 @@
 export class QueueManager {
   private buffer: Uint8Array = null;
-  private id: string = null;
 
-  constructor(id: string) {
-    this.id = id;
-  }
-
-  private initBuffer = (newChunk: Buffer) => {
+  private initBuffer = (newChunk: Buffer): number => {
     this.buffer = newChunk;
+    return this.buffer.byteLength;
   }
 
-  public putBuffer = (newChunk: Buffer) => {
+  public putBuffer = (newChunk: Buffer): number => {
     if(!this.buffer) {
       return this.initBuffer(newChunk);
     }
@@ -22,6 +18,8 @@ export class QueueManager {
     resultBuffer.set(newChunk, this.buffer.byteLength);
     
     this.buffer = resultBuffer;
+
+    return this.buffer.byteLength;
   }
 
   public getBuffer = (length: number) => {
@@ -33,9 +31,5 @@ export class QueueManager {
 
   public getSize = () => {
     return this.buffer.byteLength;
-  }
-
-  public getId = () => {
-    return this.id;
   }
 }
