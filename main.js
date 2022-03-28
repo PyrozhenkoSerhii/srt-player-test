@@ -9,6 +9,7 @@ var io = require('socket.io')(server, {
     methods: ["GET", "POST"]
   }
 });
+var net = require('net');
 var cors = require('cors')
  
 app.use(cors())
@@ -23,8 +24,10 @@ server.listen(8000, () => {
 });
 
 io.on('connection', (socket) => {
-  console.log('client connected');
-  sendPipe(socket);
+  console.log('Client connected', socket.id);
+
+  sendVideo(socket, '/Users/user/video.fifo', "video-package");
+  sendAudio(socket, '/Users/user/audio.fifo', "audio-package");
 
   socket.on('disconnect', () => { console.log("Client disconnected" )});
 });
@@ -77,44 +80,64 @@ class QueueManager {
 
 const targetBufferSize = 4 * 1280 * 720;
 
-const sendPipe = (socket) => {
-  const fifoPath = '/Users/user/video.fifo';
-
+const sendVideo = (socket, fifoPath, event) => {
   const fifo = fs.createReadStream(fifoPath);
 
-  const videoQueueManager = new QueueManager("video");
+  const queueManager = new QueueManager(event);
 
   let sentPackagesCounter = 0;
+
+  console.log(`Created a createReadStream for ${fifoPath}. Waiting for a data event`);
   
   fifo.on('data', data => {
-    videoQueueManager.putBuffer(data);
+    queueManager.putBuffer(data);
 
-    if(videoQueueManager.getSize() > targetBufferSize) {
-      // console.log(`Got enough buffer to render. Total size: ${videoQueueManager.getSize()}`);
-      const result = videoQueueManager.getBuffer(targetBufferSize);
+    if(queueManager.getSize() > targetBufferSize) {
+      const result = queueManager.getBuffer(targetBufferSize);
 
-      // console.log(`Sending buffer for render. Buffer remaining: ${videoQueueManager.getSize()}`);
-
-      console.log(`Sent a 4*1280*720. Total packages sent: ${sentPackagesCounter++}`);
-
-      socket.emit("stream-data", result);
+      console.log(`[${fifoPath}] Sent a 4*1280*720. Total packages sent: ${sentPackagesCounter++}`);
+      socket.emit(event, result);
     }
   });
 }
 
-const concatArrayBuffers = (arrayBuffers) => {
-  let totalLength = 0;
-  arrayBuffers.forEach((array) => {
-    totalLength += array.byteLength
-  })
 
-  const result = new Uint8Array(totalLength);
+const sendAudio = (socket, fifoPath, event) => {
+  const fifo = fs.createReadStream(fifoPath);
 
-  let offset = 0;
-  arrayBuffers.forEach((arr) => {
-    result.set(new Uint8Array(arr), offset);
-    offset+=arr.byteLength;
-  })
+  const queueManager = new QueueManager(event);
 
-  return result;
+  let sentPackagesCounter = 0;
+
+  console.log(`Created a createReadStream for ${fifoPath}. Waiting for a data event`);
+  
+  fifo.on('data', data => {
+    console.log(`[${fifoPath}] Sent ${data.byteLength} bytes. Total packages sent: ${sentPackagesCounter++}`);
+
+    socket.emit(event, data);
+  });
 }
+
+
+// const sendPipe = (socket, fifoPath, event) => {
+//   const fifo = fs.createReadStream(fifoPath);
+
+//   const queueManager = new QueueManager(event);
+
+//   let sentPackagesCounter = 0;
+  
+//   fifo.on('data', (data) => {
+//     queueManager.putBuffer(data as Buffer);
+
+//     if(queueManager.getSize() > targetBufferSize) {
+//       // console.log(`Got enough buffer to render. Total size: ${queueManager.getSize()}`);
+//       const result = queueManager.getBuffer(targetBufferSize);
+
+//       // console.log(`Sending buffer for render. Buffer remaining: ${queueManager.getSize()}`);
+
+//       console.log(`[${fifoPath}] Sent a 4*1280*720. Total packages sent: ${sentPackagesCounter++}`);
+
+//       socket.emit(event, result);
+//     }
+//   });
+// }

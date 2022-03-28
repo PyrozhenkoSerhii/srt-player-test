@@ -14,12 +14,23 @@ export const App = () => {
     socket.on("connect", () => {
       console.log("connected", socket.id);
     
-      socket.on("stream-data", (data) => {
-        console.log(data);
+      socket.on("video-package", (data) => {
+        // console.log(data);
+        console.log(`Received a video-package of size: ${data.byteLength}`);
 
         const array = new Uint8ClampedArray(data);
         const image = new ImageData(array, 1280, 720);
         context.putImageData(image, 0, 0);
+      })
+
+      socket.on("audio-package", (data) => {
+        // console.log(data);
+
+        console.log(`Received an audio-package of size: ${data.byteLength}`);
+
+        // const array = new Uint8ClampedArray(data);
+        // const image = new ImageData(array, 1280, 720);
+        // context.putImageData(image, 0, 0);
       })
     });
   }, [canvasRef.current]);
