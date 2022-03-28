@@ -18,7 +18,9 @@ app.get('*', (req,res) => {
   res.sendFile(path.join(__dirname, frontendPath, "index.html"));
 })
 
-server.listen(8000);
+server.listen(8000, () => {
+  console.log('running on port 8000')
+});
 
 io.on('connection', (socket) => {
   console.log('client connected');
@@ -30,19 +32,70 @@ io.on('connection', (socket) => {
 
 let buffers = [];
 
+class QueueManager {
+  buffer = null;
+  id = null;
+
+  constructor(id) {
+    this.id = id;
+  }
+
+  initBuffer = (newChunk) => {
+    this.buffer = newChunk;
+  }
+
+  putBuffer = (newChunk) => {
+    if(!this.buffer) {
+      return this.initBuffer(newChunk);
+    }
+
+    const bufferLength = this.buffer.byteLength + newChunk.byteLength;
+    const resultBuffer = new Uint8Array(bufferLength);
+
+    resultBuffer.set(this.buffer, 0);
+    resultBuffer.set(newChunk, this.buffer.byteLength);
+    
+    this.buffer = resultBuffer;
+  }
+
+  getBuffer = (length) => {
+    const neededChunk = this.buffer.slice(0, length);
+    this.buffer = this.buffer.slice(length);
+
+    return neededChunk;
+  }
+
+  getSize = () => {
+    return this.buffer.byteLength;
+  }
+
+  getId = () => {
+    return this.id;
+  }
+}
+
+
+const targetBufferSize = 4 * 1280 * 720;
+
 const sendPipe = (socket) => {
-  const fifoPath = '/Users/user/ffmpeg.pipe';
+  const fifoPath = '/Users/user/video.fifo';
 
   const fifo = fs.createReadStream(fifoPath);
+
+  const videoQueueManager = new QueueManager("video");
+
+  let sentPackagesCounter = 0;
   
   fifo.on('data', data => {
-    buffers.push(data);
-    // console.log(`Got new ArrayBuffer of length ${data.byteLength}. Bufferred amount: ${buffers.length}`);
+    videoQueueManager.putBuffer(data);
 
-    if(buffers.length >= 450) {
-      const result = concatArrayBuffers(buffers)
-      console.log(`Concatanated ${buffers.length} buffers. Result length: ${result.byteLength}`);
-      buffers = [];
+    if(videoQueueManager.getSize() > targetBufferSize) {
+      // console.log(`Got enough buffer to render. Total size: ${videoQueueManager.getSize()}`);
+      const result = videoQueueManager.getBuffer(targetBufferSize);
+
+      // console.log(`Sending buffer for render. Buffer remaining: ${videoQueueManager.getSize()}`);
+
+      console.log(`Sent a 4*1280*720. Total packages sent: ${sentPackagesCounter++}`);
 
       socket.emit("stream-data", result);
     }
