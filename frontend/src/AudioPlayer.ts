@@ -3,7 +3,7 @@ import { float32Concat, getChannelsFromInterleave, int16ToFloat32BitPCM} from ".
 
 export const BUFFER_SIZE = 2048;
 export const CHANNELS = 2;
-export const JITTER_BUFFER_SIZE = 10000;
+export const JITTER_BUFFER_SIZE = 4096;
 export const SAMPLE_RATE = 48000;
 
 export class AudioPlayer {
@@ -63,7 +63,6 @@ export class AudioPlayer {
   public onData = (data: ArrayBuffer) => {
     const interleavedInt16Buffer = new Int16Array(data);
 
-    console.log(interleavedInt16Buffer);
     const interleavedFloat32Buffer = int16ToFloat32BitPCM(interleavedInt16Buffer);
 
     const {
