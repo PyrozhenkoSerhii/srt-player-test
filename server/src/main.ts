@@ -15,7 +15,7 @@ const io = require('socket.io')(server, {
   }
 });
  
-const frontendPath = "/frontend/build";
+const frontendPath = "../../frontend/build";
 const PORT = 8000;
 
 const videoServer = new TcpServer(videoPort);
