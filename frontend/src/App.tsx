@@ -1,43 +1,40 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
-import { AudioPlayer } from "./AudioPlayer";
 
-const audioPlayer = new AudioPlayer();
+import { Player } from "./Player";
+
+const socket = io("localhost:8000");
 
 export const App = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  const playerServiceRef = useRef<Player>(null);
+
   const [isPlaying, setIsPlaying] = useState(false);
 
   const toggleIsPlaying = () => {
+    if(!playerServiceRef.current) return;
+
     setIsPlaying((prev) => !prev);
-    audioPlayer.togglePlayback();
+    playerServiceRef.current.togglePlayback();
   }
 
   useEffect(() => {
-    if(!canvasRef.current) return;
-
-    const context = canvasRef.current?.getContext("2d");
-    const socket = io("localhost:8000");
+    playerServiceRef.current = new Player({canvas: canvasRef.current});
 
     socket.on("connect", () => {
       console.log("connected", socket.id);
     
-      socket.on("video-package", (data) => {
-        // console.log(`Received a video-package of size: ${data.byteLength}`);
-
-        const array = new Uint8ClampedArray(data);
-        const image = new ImageData(array, 1280, 720);
-        context.putImageData(image, 0, 0);
+      socket.on("video-package", (frame) => {
+        playerServiceRef.current.onVideoFrame(frame)
       })
 
-      socket.on("audio-package", (data) => {
-        // console.log(`Received an audio-package of size: ${data.byteLength}`);
-        audioPlayer.onData(data);
+      socket.on("audio-package", (frame) => {
+        playerServiceRef.current.onAudioFrame(frame);
       })
     });
-  }, [canvasRef.current]);
+  }, []);
 
   return (
     <div>

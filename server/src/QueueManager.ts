@@ -22,7 +22,18 @@ export class QueueManager {
     return this.buffer.byteLength;
   }
 
-  public getBuffer = (length: number) => {
+  public getMultipleBuffers = (length: number) => {
+    const results = [];
+
+    while (this.getSize() >= length) {
+      results.push(this.getBuffer(length));
+    }
+    return results;
+  }
+
+  public getBuffer = (length: number, allowMultiple = false) => {
+    if(allowMultiple) return this.getMultipleBuffers(length);
+
     const neededChunk = this.buffer.slice(0, length);
     this.buffer = this.buffer.slice(length);
 

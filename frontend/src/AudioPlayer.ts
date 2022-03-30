@@ -1,14 +1,13 @@
-
+import { FrameStructure } from "./interfaces";
 import { float32Concat, getChannelsFromInterleave, int16ToFloat32BitPCM} from "./utils"
 
-export const BUFFER_SIZE = 2048;
+export const BUFFER_SIZE = 1024;
 export const CHANNELS = 2;
-export const JITTER_BUFFER_SIZE = 4096;
 export const SAMPLE_RATE = 48000;
 
 export class AudioPlayer {
-  private audioQueueLeft: Float32Array = null;
-  private audioQueueRight: Float32Array = null;
+  private audioQueueLeft: Float32Array = new Float32Array();
+  private audioQueueRight: Float32Array = new Float32Array();
 
   private isPlaying = false;
 
@@ -20,13 +19,17 @@ export class AudioPlayer {
 
   public togglePlayback = () => {
     this.isPlaying = !this.isPlaying;
+
     if(this.isPlaying && this.context.state === "suspended") {
       this.context.resume(); 
       console.log("[togglePlayback] context resumed");
     } else if (!this.isPlaying && this.context.state === "running") {
       this.context.suspend();
+      this.audioQueueLeft = new Float32Array();
+      this.audioQueueRight = new Float32Array();
       console.log("[togglePlayback] context suspended");
     }
+    
     console.log("[togglePlayback] Status isPlaying: ", this.isPlaying);
   }
 
@@ -60,7 +63,16 @@ export class AudioPlayer {
     output.connect(this.context.destination);
   }
 
-  public onData = (data: ArrayBuffer) => {
+  private lastData = null;
+
+
+  public onData = ({data}: FrameStructure) => {
+    const now = Date.now();
+
+    console.log(`Received ${data.byteLength}bytes. Since last data: ${(now - this.lastData).toFixed(2)}`)
+
+    this.lastData = now;
+
     const interleavedInt16Buffer = new Int16Array(data);
 
     const interleavedFloat32Buffer = int16ToFloat32BitPCM(interleavedInt16Buffer);
@@ -70,32 +82,10 @@ export class AudioPlayer {
       rightChannel,
     } = getChannelsFromInterleave(interleavedFloat32Buffer);
 
-    if (this.isPlaying) {
-      if (this.audioQueueLeft && this.audioQueueRight) {
-        this.audioQueueLeft = float32Concat(this.audioQueueLeft, leftChannel);
-        this.audioQueueRight = float32Concat(this.audioQueueRight, rightChannel);
-      } else {
-        if (leftChannel.length < JITTER_BUFFER_SIZE) {
-          const leftInitialQueue = new Float32Array(JITTER_BUFFER_SIZE);
-          const rightInitialQueue = new Float32Array(JITTER_BUFFER_SIZE);
-
-          const zerosLength = JITTER_BUFFER_SIZE - leftChannel.length;
-
-          const zeroArray = new Float32Array(zerosLength);
-
-          leftInitialQueue.set(zeroArray);
-          rightInitialQueue.set(zeroArray);
-
-          leftInitialQueue.set(leftChannel, zerosLength);
-          rightInitialQueue.set(rightChannel, zerosLength);
-
-          this.audioQueueLeft = leftInitialQueue;
-          this.audioQueueRight = rightInitialQueue;
-        } else {
-          this.audioQueueLeft = leftChannel;
-          this.audioQueueRight = rightChannel;
-        }
-      }
+    if(this.isPlaying) {
+      this.audioQueueLeft = float32Concat(this.audioQueueLeft, leftChannel);
+      this.audioQueueRight = float32Concat(this.audioQueueRight, rightChannel);
+      return;
     }
   }
 }
