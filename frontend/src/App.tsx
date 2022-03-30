@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { io } from "socket.io-client";
 
 import { Player } from "./services/Player";
@@ -7,6 +8,8 @@ import { FrameStructure } from "./utils/interfaces";
 const socket = io("localhost:8000");
 
 export const App = () => {
+  const { search } =  useLocation();
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const playerServiceRef = useRef<Player>(null);
@@ -21,7 +24,8 @@ export const App = () => {
   }
 
   useEffect(() => {
-    playerServiceRef.current = new Player({canvas: canvasRef.current});
+    playerServiceRef.current = new Player({ canvas: canvasRef.current, fullLogs: !!search });
+    console.log("[useEffect] playerRef.current initialized")
 
     socket.on("connect", () => {
       console.log(`[socket] Connected with id ${socket.id}`);
@@ -34,7 +38,7 @@ export const App = () => {
         playerServiceRef.current.onAudioFrame(frame);
       })
     });
-  }, []);
+  }, [search]);
 
   return (
     <div style={{display: "flex", flexDirection: "column"}}>

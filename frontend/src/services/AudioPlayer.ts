@@ -8,6 +8,7 @@ const SAMPLE_RATE = 48000;
 interface IConstructorProps {
   getAudioFromQueue: () => GetAudioFrameFromQueueResponse;
   renderClosestVideoFrame: RenderClosestVideoFrameFunc;
+  fullLogs: boolean;
 }
 export class AudioPlayer {
   private context: AudioContext = null;
@@ -16,9 +17,12 @@ export class AudioPlayer {
 
   private renderClosestVideoFrame: RenderClosestVideoFrameFunc = null;
 
-  constructor({ getAudioFromQueue, renderClosestVideoFrame }: IConstructorProps) {
+  private fullLogs = false;
+
+  constructor({ getAudioFromQueue, renderClosestVideoFrame, fullLogs }: IConstructorProps) {
     this.getAudioFromQueue = getAudioFromQueue;
     this.renderClosestVideoFrame = renderClosestVideoFrame;
+    this.fullLogs = fullLogs;
 
     this.initializeContext();
   }
@@ -49,7 +53,9 @@ export class AudioPlayer {
         return;
       }
 
-      console.log(`[onaudioprocess] Playing audio "frame" with timestamp ${frame.timestamp}. Left in queue: ${queueLength}`);
+      if(this.fullLogs) {
+        console.log(`[onaudioprocess] Playing audio "frame" with timestamp ${frame.timestamp}. Left in queue: ${queueLength}`);
+      }
       e.outputBuffer.getChannelData(0).set(frame.left);
       e.outputBuffer.getChannelData(1).set(frame.right);
 

@@ -13,13 +13,17 @@ export class Player {
   private audioPlayer: AudioPlayer = null;
   private active = false;
 
-  constructor({ canvas }) {
+  private fullLogs = false;
+
+  constructor({ canvas, fullLogs }) {
     this.canvas = canvas;
     this.context = this.canvas.getContext("2d");
+    this.fullLogs = fullLogs;
 
     this.audioPlayer = new AudioPlayer({
       getAudioFromQueue: this.getAudioFromQueue,
       renderClosestVideoFrame: this.renderClosestVideoFrame,
+      fullLogs: this.fullLogs,
     });
   }
 
@@ -123,7 +127,9 @@ export class Player {
    * Saves it, so its timestamp can be compared later on
    */
   private renderVideoFrame = (frame: FrameStructure): void => {
-    console.log(`[renderVideoFrame] Rendering video "frame" with timestamp ${frame.timestamp}. Left in queue: ${this.videoFrames.length}`);
+    if(this.fullLogs) {
+      console.log(`[renderVideoFrame] Rendering video "frame" with timestamp ${frame.timestamp}. Left in queue: ${this.videoFrames.length}`);
+    }
 
     const array = new Uint8ClampedArray(frame.data);
     const image = new ImageData(array, 1280, 720);
